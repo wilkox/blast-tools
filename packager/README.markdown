@@ -1,7 +1,7 @@
 #About
 This set of scripts is designed for managing large BLAST jobs on a remote server running PBS or similar, where there are limitations on bandwidth and disk space at the remote server. It breaks BLAST jobs up into chunks and manages them in the PBS queue.
 
-This script was written for a specific case in a specific environment and is absolutely not fit for production use unless you have read every line of code, tested it thoroughly and know exactly what you're doing!
+These scripts were written for a specific case in a specific environment and are **absolutely not fit for production use** unless you have read every line of code, tested them thoroughly and know exactly what you're doing!
 
 #Requiremens
 Requires `perl` and subversion on both the local and remote servers.
