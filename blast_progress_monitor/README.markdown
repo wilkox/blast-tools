@@ -12,4 +12,4 @@ This software is released into the public domain. To the extent possible under l
 Attribution to the author would be appreciated but is not required.
 
 #Author
-BLAST progess monitor was written by David Wilkins: david@wilkox.org
+BLAST progress monitor was written by David Wilkins: david@wilkox.org
