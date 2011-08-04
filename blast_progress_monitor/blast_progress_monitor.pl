@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+use warnings;
+
 #provides useful information and tools for monitoring 
 # blast searchs running locally or on the sun grid engine
 
@@ -57,17 +59,17 @@ die ("ERROR - you cannot specify both a shell script (-s) and blast input/output
 die ("ERROR - you cannot specify both a shell script (-s) and a job id (-j)\n") if (defined $shellscript && defined $jobid);
 die ("ERROR - you cannot specify both a start time (-t) and a shell script (-s)\n") if (defined $shellscript && defined $userstarttime);
 die ("ERROR - you cannot specify both a start time (-t) and a job id (-j)\n") if (defined $userstarttime && defined $jobid);
-die ("ERROR - cou cannot request the status of all jobs for the current user (-u) in conjunction with any other option\n") if $autolist == 1 && (defined $shellscript || defined $blastqueryfile || defined $blastoutputfile || defined $shell_scripts_file);
-die ("ERROR - option -f is incompatible with options -u, -i, -o and -s\n") if defined $shell_scripts_file && (defined $shellscript || defined $blastqueryfile || defined $blastoutputfile || $autolist == 1);
+die ("ERROR - cou cannot request the status of all jobs for the current user (-u) in conjunction with any other option\n") if $autolist && (defined $shellscript || defined $blastqueryfile || defined $blastoutputfile || defined $shell_scripts_file);
+die ("ERROR - option -f is incompatible with options -u, -i, -o and -s\n") if defined $shell_scripts_file && (defined $shellscript || defined $blastqueryfile || defined $blastoutputfile || $autolist);
 die ("ERROR - must provide a file containing a list of shell scripts with -f option\n") if defined $shell_scripts_file && !$shell_scripts_file;
 die ("ERROR - must supply an output prefix for option -v\n") if defined $makePlot && !$makePlot;
 die ("ERROR - must supply an output prefix for option -g\n") if defined $makeGaps && !$makeGaps;
-die ("ERROR - -g can only be used in conjunction with -v\n") if defined $makegaps && !$makePlot;
+die ("ERROR - -g can only be used in conjunction with -v\n") if defined $makeGaps && !$makePlot;
 die ("ERROR - -h can only be used in conjunction with -g\n") if defined $gapproportion && !$makeGaps;
 $gapproportion = 0.02 if !$gapproportion;
 
 ##BODY
-if ($autolist == 1) {
+if ($autolist) {
 	@shell_scripts = &get_list_of_user_jobs;
 	foreach $shellscript (@shell_scripts) {
 		&readshscript;
@@ -107,6 +109,9 @@ sub make_the_output {
 }
 
 sub make_plot {
+
+	my @inputs;
+	my @importantpos;
 
 	#read in blast query list
 	die ("ERROR - could not open blast query file $blastqueryfile\n") unless open(IN, "<$blastqueryfile");
@@ -215,6 +220,11 @@ EOF
 
 sub dostats{
 
+	my %hits;
+	$totalhits = 0;
+	$progresscount = 0;
+	my @queries;
+
 	#set the cut-to and cut-from file names to the defaults if they were not specified by the user
 	$cuttofilename =  "$blastqueryfile.cuttoprogress" if (defined $cuttofilename && !$cuttofilename);
 	$cutfromfilename = "$blastqueryfile.cutfromprogress" if (defined $cutfromfilename && !$cutfromfilename);
@@ -225,16 +235,15 @@ sub dostats{
 
 	#detect if output is in xml format
 	$head = `head -1 $blastoutputfile`;
-	$is_xml = 1 if $head =~ /^<\?xml/;
-	print STDERR "DETECTED XML OUTPUT FORMAT\n" if $is_xml == 1;
-	print STDERR "DETECTED TABULAR OUTPUT FORMAT\n" unless $is_xml == 1;
+	my $is_xml if $head =~ /^<\?xml/;
+	print STDERR "DETECTED XML OUTPUT FORMAT\n" if $is_xml;
+	print STDERR "DETECTED TABULAR OUTPUT FORMAT\n" unless $is_xml;
 
 	#make hash of hits
 	die ("ERROR: could not open blast output file $blastoutputfile\n") unless open(BLASTOUTPUT, "<$blastoutputfile");
-	$totalhits = 0;
 	while ($line = <BLASTOUTPUT>) {
 		chomp $line;
-		if ($is_xml == 1) {
+		if ($is_xml) {
 			next unless $line =~ /<.*query-def.*>(.+)<\/.*query-def.*>/;
 			$qname = $1;
 			$qname =~ /^(\S+)/;
@@ -257,6 +266,8 @@ sub dostats{
 	if (defined $cutfromfilename) {
 		die("ERROR: could not create cut-from-progress file at $cutfromfilename\n") unless open(CUTFROM, ">$cutfromfilename");
 		}
+
+	my $cutdone = 0;
 	while ($line = <BLASTINPUT>) {
 		chomp $line;
 		$currentseq = $1 if $line =~ /^>(\S+)\s/;
