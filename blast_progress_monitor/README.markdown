@@ -4,7 +4,7 @@ A simple tool for monitoring the progress of BLAST searches, estimating their co
 Currently designed for use with either stand-alone BLAST searches or searches running on the Sun Grid Engine, but it would be nice to add support for other environments. Contributions very welcome.
 
 #Requirements
-Requires perl. Some functions require the R statistical package. Written for a linux or other unix-like environment.
+Requires perl. Some functions require the R statistical package. Written for a linux or other unix-like environment. Requires the Getopt::Long and Time::Local modules.
 
 #License
 This software is released into the public domain. To the extent possible under law, all copyright and related or neighboring rights are waived and permission is explicitly and irrevocably granted to copy, modify, adapt, sell and distribute it in any way you choose.
