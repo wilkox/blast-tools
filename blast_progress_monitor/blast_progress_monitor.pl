@@ -69,7 +69,6 @@ die ("ERROR - -h can only be used in conjunction with -g\n") if defined $gapprop
 $gapproportion = 0.02 if !$gapproportion;
 
 ##BODY
-my $lasthit;
 if ($autolist) {
 	@shell_scripts = &get_list_of_user_jobs;
 	foreach $shellscript (@shell_scripts) {
@@ -269,14 +268,10 @@ sub dostats{
 		}
 
 	my $cutdone = 0;
-	my $currentseq;
 	while ($line = <BLASTINPUT>) {
 		chomp $line;
 		$currentseq = $1 if $line =~ /^>(\S+)\s/;
 		$cutdone = 2 if ($line =~ /^>/ && $cutdone == 1); #set cutdone to 2 when we are one the next sequence after the last with full hit
-		if ($currentseq eq $lasthit) {
-			$cutdone = 1; #set cutdone to 1 if we are on the last sequence with full hit
-			}
 		if (defined $cuttofilename) {
 			print CUT "$line\n" unless $cutdone == 2;
 			}
@@ -284,6 +279,10 @@ sub dostats{
 			print CUTFROM "$line\n" if $cutdone == 2;
 			}
 		push(@queries, $1) if $line =~ /^>(\S+)/;
+		next unless $currentseq && $lasthit;
+		if ($currentseq eq $lasthit) {
+			$cutdone = 1; #set cutdone to 1 if we are on the last sequence with full hit
+			}
 		}
 	close BLASTINPUT;
 	close CUT if $cuttofilename;
