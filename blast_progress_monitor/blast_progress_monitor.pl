@@ -269,6 +269,7 @@ sub dostats{
 		}
 
 	my $cutdone = 0;
+	my $currentseq;
 	while ($line = <BLASTINPUT>) {
 		chomp $line;
 		$currentseq = $1 if $line =~ /^>(\S+)\s/;
