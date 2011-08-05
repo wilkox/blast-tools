@@ -69,6 +69,7 @@ die ("ERROR - -h can only be used in conjunction with -g\n") if defined $gapprop
 $gapproportion = 0.02 if !$gapproportion;
 
 ##BODY
+my $lasthit;
 if ($autolist) {
 	@shell_scripts = &get_list_of_user_jobs;
 	foreach $shellscript (@shell_scripts) {
