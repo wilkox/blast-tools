@@ -182,8 +182,11 @@ sub draw_plot {
 
 	#generate R script
 	print STDERR "\nWriting R script to R.tmp...";
-	our $script;
 	die ("ERROR - cannot create R script at R.tmp\n") unless open(R, ">R.tmp");
+	our $script;
+	$script .= <<EOF;
+library("maptools")
+EOF
 
 	#R: read in plotfiles for each blast output
 	$j = 0;
@@ -200,11 +203,11 @@ pdf("$output_prefix.pdf", width = $plot_width, height = $plot_height)
 EOF
 
 	#R: set up seperate par row for features if needed
-	unless (!$features_file) { #unless no features file has been specified
-		$script .= <<EOF;
-par(mfrow = c(2,1))
-EOF
-	}
+	#unless (!$features_file) { #unless no features file has been specified
+		#$script .= <<EOF;
+#par(mfrow = c(2,1))
+#EOF
+	#}
 	
 	#R: set plot title and initialise plot area
 	if ($plot_identity) {
@@ -261,25 +264,29 @@ dev.off()
 EOF
 	} else {
 
-		$script .= <<EOF;
-plot(1, type="n", axes=F, xlim = c(0, $reference_genome_length), ylim = c(0, 10), ylab = "", xlab = "")
-EOF
+		#$script .= <<EOF;
+#plot(1, type="n", axes=F, xlim = c(0, $reference_genome_length), ylim = c(0, 10), ylab = "", xlab = "")
+#EOF
 
 		print STDERR "\nAdding features...";
 		die ("ERROR - could not open features in $features_file\n") unless open(FEATURES, "<$features_file");
+			our @xs;
+			our @ys;
+			our @labels;
 			while ($line = <FEATURES>) {
 				chomp $line;
 				my @fields = split(/,/, $line);
 				die ("ERROR - malformed features line on line $. of $features_file - all lines should have four fields - if you want to leave a field empty, you still have to put in commas to show it's there\n") unless @fields == 4;
 				print STDERR "\nAdding feature @fields[3]...";
-				if (@fields[0] < @fields[1]) {
-					&draw_arrow_f(@fields);
-				} else {
-					&draw_arrow_r(@fields);
-				}
+				&draw_feature(@fields);
 			}
 		close FEATURES;
+
+		my $xs = join(",", @xs);
+		my $ys = join(",", @ys);
+		my $labels = join(",", @labels);
 		$script .= <<EOF;
+pointLabel(c($xs), c($ys), pos=1, labels=c($labels), xpd=NA, allowSmallOverlap = FALSE)
 dev.off()
 EOF
 
@@ -293,40 +300,7 @@ EOF
 
 }
 
-sub draw_arrow_f {
-	@fields = @_;
-
-	$start_pos = @fields[0];
-	$end_pos = @fields[1];
-	$gene_label = @fields[3];
-	
-	$arrow_pos = ($end_pos - $start_pos) * 0.8 + $start_pos;
-	$text_pos = ($end_pos - $start_pos) * 0.5 + $start_pos;
-	if (@fields[2] eq "") {
-		$arrow_colour = "firebrick";
-	} else {
-		$arrow_colour = @fields[2];
-	}
-
-	$script .= <<EOF;
-draw_me = rbind(
-c($start_pos,7),
-c($arrow_pos,7),
-c($arrow_pos,10),
-c($end_pos,5),
-c($arrow_pos,0),
-c($arrow_pos,3),
-c($start_pos,3),
-c($start_pos,7)
-)
-
-polygon(draw_me, col=c("$arrow_colour"), lty=1, xpd=NA)
-text($text_pos, 0, pos=1, labels=c("$gene_label"), xpd=NA)
-EOF
-
-}
-
-sub draw_arrow_r {
+sub draw_feature {
 
 	@fields = @_;
 
@@ -334,7 +308,6 @@ sub draw_arrow_r {
 	$end_pos = @fields[1];
 	$gene_label = @fields[3];
 	
-	$arrow_pos = ($start_pos - $end_pos) * 0.2 + $end_pos;
 	$text_pos = ($start_pos - $end_pos) * 0.5 + $end_pos;
 	if (@fields[2] eq "") {
 		$arrow_colour = "firebrick";
@@ -342,19 +315,19 @@ sub draw_arrow_r {
 		$arrow_colour = @fields[2];
 	}
 
+	push(@xs, $text_pos);
+	push(@ys, 0);
+	push(@labels, "\"$gene_label\"");
+
 	$script .= <<EOF;
 draw_me = rbind(
-c($end_pos,5),
-c($arrow_pos, 10),
-c($arrow_pos, 7),
-c($start_pos, 7),
-c($start_pos, 3),
-c($arrow_pos, 3),
-c($arrow_pos, 0),
-c($end_pos,5)
+c($end_pos,0.7),
+c($start_pos, 0.7),
+c($start_pos, 0.3),
+c($end_pos, 0.3),
+c($end_pos,0.7)
 )
 
 polygon(draw_me, col=c("$arrow_colour"), lty=1, xpd=NA)
-text($text_pos, 0, pos=1, labels=c("$gene_label"), xpd=NA)
 EOF
 }
