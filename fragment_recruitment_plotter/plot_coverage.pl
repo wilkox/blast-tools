@@ -47,7 +47,7 @@ GetOptions (
 'y!' => \$logY,
 ) or die $USAGE;
 die $USAGE if !$reference_genome or @blast_output == 0 or !$output_prefix or !$window_size or !$plot_height or !$plot_width;
-print STDERR "\nNOTE - plotting %ID, not coverage!\n" if $plot_identity == 1;
+print STDERR "\nNOTE - plotting %ID, not coverage!\n" if $plot_identity;
 die ("ERROR - a maximum of 5 different samples can be displayed on the same plot") if @blast_output > 5;
 print STDERR "IMPORANT - you have specified a log scale, but you're plotting \%identity, not coverage. Make sure this is what you want to do!" if $logY && $plot_identity;
 
@@ -99,7 +99,7 @@ sub get_coverage {
 			my @sorted = sort {$a <=> $b} (@positions);
 			my $startpos = @sorted[0];
 			my $endpos = @sorted[1];
-			my $percentidentity = @line[2] if $plot_identity == 1;
+			my $percentidentity = @line[2] if $plot_identity;
 			
 			#make sure the start and end positions exist and are numbers
 			die ("ERROR - malformed line in blast output $blast_output at line $.\n") unless $startpos =~ /^\d+$/ && $endpos =~ /^\d+$/;
@@ -108,7 +108,7 @@ sub get_coverage {
 			for ($i = $startpos; $i <= $endpos; ++$i) {
 				++$coverage{$blast_output}{$i};
 				++$coverageTotal;
-				$percentidentity{$blast_output}{$i} += $percentidentity if $plot_identity == 1;
+				$percentidentity{$blast_output}{$i} += $percentidentity if $plot_identity;
 			}
 		}
 
@@ -134,7 +134,7 @@ sub do_moving_window_average {
 			undef $sum;
 			for ($j = 1; $j <= $window_size; ++$j) {
 				my $pos_to_count = $i - $j;
-				if ($plot_identity == 1) {
+				if ($plot_identity) {
 					next unless exists $coverage{$blast_output}{$pos_to_count};
 					my $pos_average = $percentidentity{$blast_output}{$pos_to_count} / $coverage{$blast_output}{$pos_to_count};
 					$sum += $pos_average;
@@ -182,11 +182,11 @@ sub draw_plot {
 
 	#generate R script
 	print STDERR "\nWriting R script to R.tmp...";
-	my $script;
+	our $script;
 	die ("ERROR - cannot create R script at R.tmp\n") unless open(R, ">R.tmp");
 
 	#R: read in plotfiles for each blast output
-	my $j = 0;
+	$j = 0;
 	foreach $blast_output (@blast_output) {
 		$script .= <<EOF;
 coverage$j = read.csv("$j-plotfile.tmp", head=TRUE)
@@ -207,7 +207,7 @@ EOF
 	}
 	
 	#R: set plot title and initialise plot area
-	if ($plot_identity == 1) {
+	if ($plot_identity) {
 		$plot_title = "% ID";
 	} else {
 		if ($logY) {
@@ -228,7 +228,7 @@ EOF
 
 	#R: draw a polygon representing coverage for each blast output
 	my @rcolours = qw(#104E8B70 #B2222270 #228B2270 #8B0A5070 #CDAD0070);
-	my $j = 0;
+	$j = 0;
 	foreach $blast_output (@blast_output) {
 		$script .= <<EOF;
 polygon_coords = rbind(coverage$j, c($reference_genome_length, 0), c(0,0))
@@ -240,7 +240,7 @@ EOF
 	#R: add a legend to the coverage plot
 	my $legendText;
 	my $legendCols;
-	my $j = 0;
+	$j = 0;
 	foreach $blast_output (@blast_output) {
 		$legendText .= "\"$blast_output\",";
 		$legendCols .= "\"@rcolours[$j]\",";
@@ -271,6 +271,7 @@ EOF
 				chomp $line;
 				my @fields = split(/,/, $line);
 				die ("ERROR - malformed features line on line $. of $features_file - all lines should have four fields - if you want to leave a field empty, you still have to put in commas to show it's there\n") unless @fields == 4;
+				print STDERR "\nAdding feature @fields[3]...";
 				if (@fields[0] < @fields[1]) {
 					&draw_arrow_f(@fields);
 				} else {
