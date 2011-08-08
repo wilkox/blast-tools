@@ -95,6 +95,9 @@ exit;
 
 ##SUBS
 sub make_the_output {
+
+	my $lasthit = "";
+
 	print "====\n"; #begin output
 	print "SHELL SCRIPT RUNNING ON SGE:\t$shellscript\n" unless !$shellscript;
 	&dostats; #basic stats on progress

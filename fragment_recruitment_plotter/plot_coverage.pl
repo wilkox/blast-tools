@@ -90,7 +90,7 @@ sub get_coverage {
 
 		while ($line = <BLAST>) {
 
-			print STDERR "\rProcessing line $. of $blast_output...";
+			print STDERR "\nProcessing line $. of $blast_output..." if $. % 10000 == 0;
 
 			#get the start and end positions of the hit
 			chomp $line;
