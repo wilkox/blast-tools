@@ -1,9 +1,25 @@
 #!/usr/bin/perl
 
+#count oligonucleotide frequencies
+
+#written by david wilkins <david@wilkox.org>
+#lives at https://github.com/wilkox/blast-tools
+
+#this software is released into the public domain. To the extent 
+# possible under law, all copyright and related or neighboring
+# rights are waived and permission is explicitly and irrevocably
+# granted to copy, modify, adapt, sell and distribute this software
+# in any way you choose.
+
 use warnings;
 use Getopt::Long;
 
-my $USAGE = q/**Usage goes here***
+my $USAGE = q/USAGE:
+
+oligonucleotide_frequency_counter [files...]
+OPTIONAL:                         -n <oligonucleotide length>
+
+Oligonucleotide length defaults to 4. Assumes fasta headers are unique.
 /;
 
 #get options
