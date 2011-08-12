@@ -20,25 +20,39 @@ $oligoLength = $oligoLength ? $oligoLength : 4;
 foreach my $sequenceFile (@ARGV) {
 	die ("ERROR - could not open input file at $sequenceFile") unless open(IN, "<$sequenceFile");
 	my $seqName = "Unnamed Sequence";
+	my $prepend = "";
 	while (my $line = <IN>) {
 		if ($line =~ /^>(.+)$/) {
-			$seqName = exists $count{$seqName} ? $sequenceFile . "-" . $seqName : $1;
+			$seqName = $1;
 			next;
 		}
+
 		$line =~ s/\s//g;
 		$line = lc($line);
-		$line =~ s/[^a|t|c|g]//g;	
-		while ($line =~ /(.{$oligoLength})/g) {
-			++$count{$seqName}{$1};
+		$line =~ s/[^a|t|c|g]//g;
+		$line = $prepend . $line;
+
+		my $i;
+		for ($i = 0; $i <= length($line); ++$i) {
+			my $oligo = substr($line, $i, $oligoLength);
+			$prepend = $oligo if length($oligo) < $oligoLength;
+			next if length($oligo) < $oligoLength;	
+			++$count{$seqName}{$oligo};
+			$allOligos{$oligo} = "";
 		}
 	}
 	close IN;
 }
 
 #report
+print "sequence";
+foreach my $oligo (keys(%allOligos)) {
+	print ",$oligo";
+}
+
 foreach my $seqName (keys(%count)) {
-	print "\n\nSEQUENCE: $seqName";
-	foreach my $oligo (keys(%{$count{$seqName}})) {
-		print "\n$oligo\t$count{$seqName}{$oligo}";
+	print "\n$seqName";
+	foreach my $oligo (keys(%allOligos)) {
+		print exists $count{$seqName}{$oligo} ? ",$count{$seqName}{$oligo}" : ",0";
 	}
 }
