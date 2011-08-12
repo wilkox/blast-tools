@@ -1,7 +1,5 @@
 #!/usr/bin/perl
 
-use warnings;
-
 #provides useful information and tools for monitoring 
 # blast searchs running locally or on the sun grid engine
 
@@ -16,6 +14,7 @@ use warnings;
 # granted to copy, modify, adapt, sell and distribute this software
 # in any way you choose.
 
+use warnings;
 use Getopt::Long;
 use Time::Local;
 

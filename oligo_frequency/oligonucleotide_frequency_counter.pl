@@ -39,6 +39,7 @@ foreach my $sequenceFile (@ARGV) {
 	my $prepend = "";
 	while (my $line = <IN>) {
 		if ($line =~ /^>(.+)$/) {
+			$prepend = "";
 			$seqName = $1;
 			next;
 		}
