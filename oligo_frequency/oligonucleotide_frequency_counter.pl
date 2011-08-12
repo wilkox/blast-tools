@@ -32,13 +32,45 @@ GetOptions(
 die $USAGE if @ARGV == 0;
 $oligoLength = $oligoLength ? $oligoLength : 4;
 
+#make the set of possible n-mers
+my @bases = qw(a t c g);
+foreach (@bases) {
+	&extendNuc($_);
+}
+
+sub extendNuc { 
+	my $prefix = $_[0];
+	if ($prefix && length($prefix) == $oligoLength) {
+		$allOligos{$prefix} = "";
+		return;
+	}
+	foreach my $base (@bases) {
+		my $extend = $prefix ? $prefix . $base : $base;
+		&extendNuc($extend);
+	}
+}
+
 #count tetranucleotide frequencies
+
+#initialise report
+print "sequence";
+foreach my $oligo (keys(%allOligos)) {
+	print ",$oligo";
+}
+
 foreach my $sequenceFile (@ARGV) {
 	die ("ERROR - could not open input file at $sequenceFile") unless open(IN, "<$sequenceFile");
 	my $seqName = "Unnamed Sequence";
 	my $prepend = "";
 	while (my $line = <IN>) {
 		if ($line =~ /^>(.+)$/) {
+			unless ($. == 1) {
+				print "\n$seqName";
+				foreach my $oligo (keys(%allOligos)) {
+					print exists $count{$oligo} ? ",$count{$oligo}" : ",0";
+				}
+			}
+			undef %count;
 			$prepend = "";
 			$seqName = $1;
 			next;
@@ -55,21 +87,8 @@ foreach my $sequenceFile (@ARGV) {
 			$prepend = $oligo if length($oligo) < $oligoLength;
 			next if length($oligo) < $oligoLength;	
 			++$count{$seqName}{$oligo};
-			$allOligos{$oligo} = "";
 		}
 	}
 	close IN;
 }
 
-#report
-print "sequence";
-foreach my $oligo (keys(%allOligos)) {
-	print ",$oligo";
-}
-
-foreach my $seqName (keys(%count)) {
-	print "\n$seqName";
-	foreach my $oligo (keys(%allOligos)) {
-		print exists $count{$seqName}{$oligo} ? ",$count{$seqName}{$oligo}" : ",0";
-	}
-}
