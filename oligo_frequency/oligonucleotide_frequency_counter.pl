@@ -19,7 +19,7 @@ my $USAGE = q/USAGE:
 oligonucleotide_frequency_counter [files...]
 OPTIONAL:                         -n <oligonucleotide length>
 
-Oligonucleotide length defaults to 4. Assumes fasta headers are unique.
+Oligonucleotide length defaults to 4.
 /;
 
 #get options
@@ -32,23 +32,25 @@ GetOptions(
 die $USAGE if @ARGV == 0;
 $oligoLength = $oligoLength ? $oligoLength : 4;
 
-#count tetranucleotide frequencies
+#count oligonucleotide frequencies
 foreach my $sequenceFile (@ARGV) {
 	die ("ERROR - could not open input file at $sequenceFile") unless open(IN, "<$sequenceFile");
-	my $seqName = "Unnamed Sequence";
-	my $prepend = "";
+	my $seqName = "Unnamed Sequence ($sequenceFile)"; #tracks the current sequence name
+	my $prepend = ""; #adds any leftover from the previous line onto the current line
 	while (my $line = <IN>) {
 		if ($line =~ /^>(.+)$/) {
-			$prepend = "";
+			$prepend = ""; #wipe the prepend for new sequence
 			$seqName = $1;
 			next;
 		}
 
+		#remove crud from line and add prepend
 		$line =~ s/\s//g;
 		$line = lc($line);
 		$line =~ s/[^a|t|c|g]//g;
 		$line = $prepend . $line;
 
+		#walk over sequence and pull all oligos of specified length
 		my $i;
 		for ($i = 0; $i <= length($line); ++$i) {
 			my $oligo = substr($line, $i, $oligoLength);
