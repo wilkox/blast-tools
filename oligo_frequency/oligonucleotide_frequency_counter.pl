@@ -50,14 +50,13 @@ sub extendNuc {
 	}
 }
 
-#count tetranucleotide frequencies
-
 #initialise report
 print "sequence";
 foreach my $oligo (keys(%allOligos)) {
 	print ",$oligo";
 }
 
+#count oligonucleotide frequencies
 foreach my $sequenceFile (@ARGV) {
 	die ("ERROR - could not open input file at $sequenceFile") unless open(IN, "<$sequenceFile");
 	my $seqName = "Unnamed Sequence";
@@ -86,7 +85,7 @@ foreach my $sequenceFile (@ARGV) {
 			my $oligo = substr($line, $i, $oligoLength);
 			$prepend = $oligo if length($oligo) < $oligoLength;
 			next if length($oligo) < $oligoLength;	
-			++$count{$seqName}{$oligo};
+			++$count{$oligo};
 		}
 	}
 	close IN;
