@@ -92,4 +92,3 @@ foreach my $sequenceFile (@ARGV) {
 	}
 	close IN;
 }
-
