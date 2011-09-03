@@ -32,7 +32,7 @@ GetOptions(
 die $USAGE if @ARGV == 0;
 $oligoLength = $oligoLength ? $oligoLength : 4;
 
-#make the set of possible n-mers
+#define the set of possible n-mers
 my @bases = qw(a t c g);
 foreach (@bases) {
 	&extendNuc($_);
@@ -62,6 +62,8 @@ foreach my $sequenceFile (@ARGV) {
 	my $seqName = "Unnamed Sequence ($sequenceFile)"; #tracks the current sequence name
 	my $prepend = ""; #adds any leftover from the previous line onto the current line
 	while (my $line = <IN>) {
+
+		#at header lines, report on previous sequence and prepare for next
 		if ($line =~ /^>(.+)$/) {
 			unless ($. == 1) {
 				print "\n$seqName";
