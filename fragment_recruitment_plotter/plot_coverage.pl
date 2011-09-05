@@ -235,7 +235,7 @@ EOF
 	}
   my $ylim;
   if ($plot_identity) {
-    $ylim = $maxID * 1.2;
+    $ylim = 100;
   } else {
 	  $ylim = $maxCoverage * 1.4;
   }
