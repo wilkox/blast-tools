@@ -29,7 +29,7 @@ plot_coverage.pl	-r <filename> Reference genome in fasta format.
 OPTIONAL:		-f <filename> Features file: a comma-separated file, one feature per line, fields [start pos] [end pos] [colour] [feature name]. If no colour is specified, default is firebrick. If no feature name is specified, default is blank.
 			-d Instead of plotting coverage, plot %identity;
 			-y Plot the y axis on a log scale.
-      -s Instead of plotting coverage as a polygon, plot as a scatterplot. The output file will be in png format instead of pdf, so specify the plot dimensions -i and -h in pixels, not inches. -i 2000 -h 800 is nice.
+      -s Instead of plotting coverage as a polygon, plot as a scatterplot. The output file will be in png format instead of pdf, so specify the plot dimensions -i and -h in pixels, not inches. -i 2000 -h 800 is nice. Scatterplots plot %ID only.
 /;
 
 #get and check options
@@ -50,6 +50,7 @@ die $USAGE if !$reference_genome or @blast_output == 0 or !$output_prefix or !$w
 print STDERR "\nNOTE - plotting %ID, not coverage!\n" if $plot_identity;
 die ("ERROR - a maximum of 5 different samples can be displayed on the same plot") if @blast_output > 5;
 print STDERR "IMPORANT - you have specified a log scale, but you're plotting \%identity, not coverage. Make sure this is what you want to do!" if $logY && $plot_identity;
+$plot_identity = 1 if $scatterplot;
 
 ##BODY
 &get_length_of_reference_genome;
@@ -99,7 +100,13 @@ sub get_coverage {
 			my @sorted = sort {$a <=> $b} (@positions);
 			my $startpos = @sorted[0];
 			my $endpos = @sorted[1];
-			my $percentidentity = @line[2] if $plot_identity;
+			my $percentidentity = @line[2] if $plot_identity or $scatterplot;
+      $maxID = $percentidentity unless $maxid >= $percentidentity;
+      if ($scatterplot) {
+        $read{$blast_output}{$.}{'startpos'} = $startpos; 
+        $read{$blast_output}{$.}{'endpos'} = $endpos;  
+        $read{$blast_output}{$.}{'percentidentity'} = $percentidentity;  
+      }
 			
 			#make sure the start and end positions exist and are numbers
 			die ("ERROR - malformed line in blast output $blast_output at line $.\n") unless $startpos =~ /^\d+$/ && $endpos =~ /^\d+$/;
@@ -226,7 +233,12 @@ EOF
 			$plot_title = "Coverage";
 		}
 	}
-	my $ylim = $maxCoverage * 1.4;
+  my $ylim;
+  if ($plot_identity) {
+    $ylim = $maxID * 1.2;
+  } else {
+	  $ylim = $maxCoverage * 1.4;
+  }
 	if ($logY) {
 		$ylim = log($ylim);
 	}
@@ -236,7 +248,7 @@ par(xpd=TRUE)
 plot(coverage0\$pos, coverage0\$value, type="n", ylab = c("$plot_title"), xlab = c(""), xlim=c(0, $reference_genome_length), ylim=c(0, $ylim)$yAxis)
 EOF
 
-	#R: draw a polygon representing coverage for each blast output, unless it's a scatterplot in which case draw dots
+	#R: draw a polygon representing coverage for each blast output, unless it's a scatterplot in which case draw a line for each read
 	my @rcolours = qw(#104E8B70 #B2222270 #228B2270 #8B0A5070 #CDAD0070);
 	$j = 0;
   unless ($scatterplot) {
@@ -248,16 +260,17 @@ EOF
 	  ++$j;
 	  }
   } else {
-    foreach $blast_output (@blast_output) {
-      $script .= <<EOF;
-points(coverage$j\$pos, coverage$j\$value, pch=20, col=c("@rcolours[$j]"))
+    foreach my $blast_output (@blast_output) {
+      my $k = 1;
+      foreach my $readid (keys (%{$read{$blast_output}})) {
+        $script .= <<EOF;
+lines(c($read{$blast_output}{$readid}{'startpos'}, $read{$blast_output}{$readid}{'endpos'}), c($read{$blast_output}{$readid}{'percentidentity'}, $read{$blast_output}{$readid}{'percentidentity'}), col=c("@rcolours[$j]"))
 EOF
-      ++$j;
+      }
+    ++$j;
     }
   }
-
-	#R: add a legend to the coverage plot
-	my $legendText;
+#R: add a legend to the coverage plot my $legendText;
 	my $legendCols;
 	$j = 0;
 	foreach $blast_output (@blast_output) {
