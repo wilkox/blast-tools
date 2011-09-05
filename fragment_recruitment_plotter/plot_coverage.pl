@@ -2,8 +2,6 @@
 
 #generate a binned coverage plot for blast hits on a full genome
 
-#version 0.2
-
 #written by david wilkins <david@wilkox.org>
 #lives at https://github.com/wilkox/blast-tools
 
@@ -25,12 +23,13 @@ plot_coverage.pl	-r <filename> Reference genome in fasta format.
 			-b <filename> Blast output, in -m8 hit table format. You may plot multiple samples by using the -b flag multiple times, e.g. "-b firstsample.blast_output -b secondsample.blast_output". The coverage maps for the different samples will be displayed on the sample plot, overlayed in different colours. A maximum of 5 different samples can be displayed on the same plot.
 			-p <string> Prefix for output files.
 			-w <integer> Window size for binning. A window size of 0 will simply plot base-by-base coverage.
-			-i <number> Plot width, in inches.
-			-h <number> Plot height, in inches.
+			-i <number> Plot width, in inches (unless producing a scatterplot with -s; see below).
+			-h <number> Plot height, in inches (unless producing a scatterplot with -s; see below).
 
 OPTIONAL:		-f <filename> Features file: a comma-separated file, one feature per line, fields [start pos] [end pos] [colour] [feature name]. If no colour is specified, default is firebrick. If no feature name is specified, default is blank.
 			-d Instead of plotting coverage, plot %identity;
 			-y Plot the y axis on a log scale.
+      -s Instead of plotting coverage as a polygon, plot as a scatterplot. The output file will be in png format instead of pdf, so specify the plot dimensions -i and -h in pixels, not inches. -i 2000 -h 800 is nice.
 /;
 
 #get and check options
@@ -45,6 +44,7 @@ GetOptions (
 'f=s' => \$features_file,
 'd!' => \$plot_identity,
 'y!' => \$logY,
+'s!' => \$scatterplot,
 ) or die $USAGE;
 die $USAGE if !$reference_genome or @blast_output == 0 or !$output_prefix or !$window_size or !$plot_height or !$plot_width;
 print STDERR "\nNOTE - plotting %ID, not coverage!\n" if $plot_identity;
@@ -198,9 +198,16 @@ EOF
 	}
 
 	#R: initialise the pdf output
-	$script .= <<EOF;
+  #if it's a scatterplot, force png format
+  unless ($scatterplot) {
+	  $script .= <<EOF;
 pdf("$output_prefix.pdf", width = $plot_width, height = $plot_height)
 EOF
+  } else {
+    $script .= <<EOF;
+png("$output_prefix.png", width = $plot_width, height = $plot_height)
+EOF
+  }
 
 	#R: set up seperate par row for features if needed
 	#unless (!$features_file) { #unless no features file has been specified
@@ -229,16 +236,25 @@ par(xpd=TRUE)
 plot(coverage0\$pos, coverage0\$value, type="n", ylab = c("$plot_title"), xlab = c(""), xlim=c(0, $reference_genome_length), ylim=c(0, $ylim)$yAxis)
 EOF
 
-	#R: draw a polygon representing coverage for each blast output
+	#R: draw a polygon representing coverage for each blast output, unless it's a scatterplot in which case draw dots
 	my @rcolours = qw(#104E8B70 #B2222270 #228B2270 #8B0A5070 #CDAD0070);
 	$j = 0;
-	foreach $blast_output (@blast_output) {
-		$script .= <<EOF;
+  unless ($scatterplot) {
+	  foreach $blast_output (@blast_output) {
+		  $script .= <<EOF;
 polygon_coords = rbind(coverage$j, c($reference_genome_length, 0), c(0,0))
 polygon(polygon_coords, col=c("@rcolours[$j]"), lty=0)
 EOF
-	++$j;
-	}
+	  ++$j;
+	  }
+  } else {
+    foreach $blast_output (@blast_output) {
+      $script .= <<EOF;
+points(coverage$j\$pos, coverage$j\$value, pch=20, col=c("@rcolours[$j]"))
+EOF
+      ++$j;
+    }
+  }
 
 	#R: add a legend to the coverage plot
 	my $legendText;
