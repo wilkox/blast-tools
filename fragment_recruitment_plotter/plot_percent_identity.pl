@@ -23,11 +23,13 @@ plot_coverage.pl	-r <filename> Reference genome in fasta format.
 			-b <filename> Blast output, in -m8 hit table format. You may plot multiple samples by using the -b flag multiple times, e.g. "-b firstsample.blast_output -b secondsample.blast_output". The coverage maps for the different samples will be displayed on the sample plot, overlayed in different colours. A maximum of 5 different samples can be displayed on the same plot.
 			-p <string> Prefix for output files.
 			-w <integer> Window size for binning. A window size of 0 will simply plot base-by-base coverage.
-			-i <number> Plot width, in inches
-			-h <number> Plot height, in inches
+			-i <number> Plot width, in inches (unless producing a scatterplot with -s; see below).
+			-h <number> Plot height, in inches (unless producing a scatterplot with -s; see below).
 
 OPTIONAL:		-f <filename> Features file: a comma-separated file, one feature per line, fields [start pos] [end pos] [colour] [feature name]. If no colour is specified, default is firebrick. If no feature name is specified, default is blank.
+			-d Instead of plotting coverage, plot %identity;
 			-y Plot the y axis on a log scale.
+      -s Instead of plotting coverage as a polygon, plot as a scatterplot. The output file will be in png format instead of pdf, so specify the plot dimensions -i and -h in pixels, not inches. -i 2000 -h 800 is nice. Scatterplots plot %ID only.
 /;
 
 #get and check options
@@ -40,10 +42,15 @@ GetOptions (
 'i=s' => \$plot_width,
 'h=s' => \$plot_height,
 'f=s' => \$features_file,
+'d!' => \$plot_identity,
 'y!' => \$logY,
+'s!' => \$scatterplot,
 ) or die $USAGE;
 die $USAGE if !$reference_genome or @blast_output == 0 or !$output_prefix or !$window_size or !$plot_height or !$plot_width;
+print STDERR "\nNOTE - plotting %ID, not coverage!\n" if $plot_identity;
 die ("ERROR - a maximum of 5 different samples can be displayed on the same plot") if @blast_output > 5;
+print STDERR "IMPORANT - you have specified a log scale, but you're plotting \%identity, not coverage. Make sure this is what you want to do!" if $logY && $plot_identity;
+$plot_identity = 1 if $scatterplot;
 
 ##BODY
 &get_length_of_reference_genome;
@@ -93,7 +100,13 @@ sub get_coverage {
 			my @sorted = sort {$a <=> $b} (@positions);
 			my $startpos = @sorted[0];
 			my $endpos = @sorted[1];
+			my $percentidentity = @line[2] if $plot_identity or $scatterplot;
       $maxID = $percentidentity unless $maxid >= $percentidentity;
+      if ($scatterplot) {
+        $read{$blast_output}{$.}{'startpos'} = $startpos; 
+        $read{$blast_output}{$.}{'endpos'} = $endpos;  
+        $read{$blast_output}{$.}{'percentidentity'} = $percentidentity;  
+      }
 			
 			#make sure the start and end positions exist and are numbers
 			die ("ERROR - malformed line in blast output $blast_output at line $.\n") unless $startpos =~ /^\d+$/ && $endpos =~ /^\d+$/;
@@ -102,6 +115,7 @@ sub get_coverage {
 			for ($i = $startpos; $i <= $endpos; ++$i) {
 				++$coverage{$blast_output}{$i};
 				++$coverageTotal;
+				$percentidentity{$blast_output}{$i} += $percentidentity if $plot_identity;
 			}
 		}
 
@@ -127,9 +141,16 @@ sub do_moving_window_average {
 			undef $sum;
 			for ($j = 1; $j <= $window_size; ++$j) {
 				my $pos_to_count = $i - $j;
-        next unless exists $coverage{$blast_output}{$pos_to_count};
-        $sum += $coverage{$blast_output}{$pos_to_count};
-        ++$n;
+				if ($plot_identity) {
+					next unless exists $coverage{$blast_output}{$pos_to_count};
+					my $pos_average = $percentidentity{$blast_output}{$pos_to_count} / $coverage{$blast_output}{$pos_to_count};
+					$sum += $pos_average;
+					++$n;
+				} else {
+					next unless exists $coverage{$blast_output}{$pos_to_count};
+					$sum += $coverage{$blast_output}{$pos_to_count};
+					++$n;
+				}
 			}
 			if ($n == 0) {
 				$window_average{$blast_output}{$i} = 0;
@@ -184,9 +205,16 @@ EOF
 	}
 
 	#R: initialise the pdf output
-  $script .= <<EOF;
+  #if it's a scatterplot, force png format
+  unless ($scatterplot) {
+	  $script .= <<EOF;
 pdf("$output_prefix.pdf", width = $plot_width, height = $plot_height)
 EOF
+  } else {
+    $script .= <<EOF;
+png("$output_prefix.png", width = $plot_width, height = $plot_height)
+EOF
+  }
 
 	#R: set up seperate par row for features if needed
 	#unless (!$features_file) { #unless no features file has been specified
@@ -196,13 +224,21 @@ EOF
 	#}
 	
 	#R: set plot title and initialise plot area
-  if ($logY) {
-    $plot_title = "ln(Coverage)";
-  } else {
-    $plot_title = "Coverage";
-  }
+	if ($plot_identity) {
+		$plot_title = "% ID";
+	} else {
+		if ($logY) {
+			$plot_title = "ln(Coverage)";
+		} else {
+			$plot_title = "Coverage";
+		}
+	}
   my $ylim;
-  $ylim = $maxCoverage * 1.4;
+  if ($plot_identity) {
+    $ylim = 100;
+  } else {
+	  $ylim = $maxCoverage * 1.4;
+  }
 	if ($logY) {
 		$ylim = log($ylim);
 	}
@@ -212,18 +248,29 @@ par(xpd=TRUE)
 plot(coverage0\$pos, coverage0\$value, type="n", ylab = c("$plot_title"), xlab = c(""), xlim=c(0, $reference_genome_length), ylim=c(0, $ylim)$yAxis)
 EOF
 
-	#R: draw a polygon representing coverage for each blast output
+	#R: draw a polygon representing coverage for each blast output, unless it's a scatterplot in which case draw a line for each read
 	my @rcolours = qw(#104E8B70 #B2222270 #228B2270 #8B0A5070 #CDAD0070);
 	$j = 0;
-  foreach $blast_output (@blast_output) {
-    $script .= <<EOF;
+  unless ($scatterplot) {
+	  foreach $blast_output (@blast_output) {
+		  $script .= <<EOF;
 polygon_coords = rbind(coverage$j, c($reference_genome_length, 0), c(0,0))
 polygon(polygon_coords, col=c("@rcolours[$j]"), lty=0)
 EOF
-  ++$j;
+	  ++$j;
+	  }
+  } else {
+    foreach my $blast_output (@blast_output) {
+      my $k = 1;
+      foreach my $readid (keys (%{$read{$blast_output}})) {
+        $script .= <<EOF;
+lines(c($read{$blast_output}{$readid}{'startpos'}, $read{$blast_output}{$readid}{'endpos'}), c($read{$blast_output}{$readid}{'percentidentity'}, $read{$blast_output}{$readid}{'percentidentity'}), col=c("@rcolours[$j]"))
+EOF
+      }
+    ++$j;
+    }
   }
-
-  #R: add a legend to the coverage plot my $legendText;
+#R: add a legend to the coverage plot my $legendText;
 	my $legendCols;
 	$j = 0;
 	foreach $blast_output (@blast_output) {
