@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 
-#generate a binned coverage plot for blast hits on a full genome
+use warnings;
 
+#generate a percent identity scatterplot for blast hits on a full genome
 #written by david wilkins <david@wilkox.org>
 #lives at https://github.com/wilkox/blast-tools
 
@@ -19,17 +20,12 @@ unless ($Rversion =~ /R\sversion/) {
 }
 
 $USAGE = q/USAGE:
-plot_coverage.pl	-r <filename> Reference genome in fasta format.
-			-b <filename> Blast output, in -m8 hit table format. You may plot multiple samples by using the -b flag multiple times, e.g. "-b firstsample.blast_output -b secondsample.blast_output". The coverage maps for the different samples will be displayed on the sample plot, overlayed in different colours. A maximum of 5 different samples can be displayed on the same plot.
-			-p <string> Prefix for output files.
-			-w <integer> Window size for binning. A window size of 0 will simply plot base-by-base coverage.
-			-i <number> Plot width, in inches (unless producing a scatterplot with -s; see below).
-			-h <number> Plot height, in inches (unless producing a scatterplot with -s; see below).
-
-OPTIONAL:		-f <filename> Features file: a comma-separated file, one feature per line, fields [start pos] [end pos] [colour] [feature name]. If no colour is specified, default is firebrick. If no feature name is specified, default is blank.
-			-d Instead of plotting coverage, plot %identity;
-			-y Plot the y axis on a log scale.
-      -s Instead of plotting coverage as a polygon, plot as a scatterplot. The output file will be in png format instead of pdf, so specify the plot dimensions -i and -h in pixels, not inches. -i 2000 -h 800 is nice. Scatterplots plot %ID only.
+plot_percent_identity.pl 
+        -r <filename> Reference genome in fasta format.
+        -b <filename> Blast output, in -m8 hit table format. You may plot multiple samples by using the -b flag multiple times, e.g. "-b firstsample.blast_output -b secondsample.blast_output". The percent identity maps for the different samples will be displayed on the sample plot, overlayed in different colours. A maximum of 5 different samples can be displayed on the same plot.
+        -p <string> Prefix for output files.
+        -i <number> Plot width, in pixels
+        -h <number> Plot height, in pixels
 /;
 
 #get and check options
@@ -38,24 +34,15 @@ GetOptions (
 'r=s' => \$reference_genome,
 'b=s' => \@blast_output,
 'p=s' => \$output_prefix,
-'w=i' => \$window_size,
 'i=s' => \$plot_width,
 'h=s' => \$plot_height,
-'f=s' => \$features_file,
-'d!' => \$plot_identity,
-'y!' => \$logY,
-'s!' => \$scatterplot,
 ) or die $USAGE;
-die $USAGE if !$reference_genome or @blast_output == 0 or !$output_prefix or !$window_size or !$plot_height or !$plot_width;
-print STDERR "\nNOTE - plotting %ID, not coverage!\n" if $plot_identity;
+die $USAGE if !$reference_genome or @blast_output == 0 or !$output_prefix or !$plot_height or !$plot_width;
 die ("ERROR - a maximum of 5 different samples can be displayed on the same plot") if @blast_output > 5;
-print STDERR "IMPORANT - you have specified a log scale, but you're plotting \%identity, not coverage. Make sure this is what you want to do!" if $logY && $plot_identity;
-$plot_identity = 1 if $scatterplot;
 
 ##BODY
 &get_length_of_reference_genome;
-&get_coverage;
-&do_moving_window_average;
+&get_percent_identity;
 &draw_plot;
 exit;
 ##END BODY
@@ -78,13 +65,10 @@ sub get_length_of_reference_genome {
 	close REFERENCE;
 }
 
-sub get_coverage {
+sub get_percent_identity {
 
 	#loop over multiple blast outputs
-	my $coverageTotal;
 	foreach $blast_output (@blast_output) {
-
-		my $coverageTotal;
 
 		die ("ERROR - could not open blast output $blast_output\n") unless open(BLAST, "<$blast_output");
 		print STDERR "\n";
@@ -100,66 +84,18 @@ sub get_coverage {
 			my @sorted = sort {$a <=> $b} (@positions);
 			my $startpos = @sorted[0];
 			my $endpos = @sorted[1];
-			my $percentidentity = @line[2] if $plot_identity or $scatterplot;
+			my $percentidentity = @line[2];
       $maxID = $percentidentity unless $maxid >= $percentidentity;
-      if ($scatterplot) {
-        $read{$blast_output}{$.}{'startpos'} = $startpos; 
-        $read{$blast_output}{$.}{'endpos'} = $endpos;  
-        $read{$blast_output}{$.}{'percentidentity'} = $percentidentity;  
-      }
+      $read{$blast_output}{$.}{'startpos'} = $startpos; 
+      $read{$blast_output}{$.}{'endpos'} = $endpos;  
+      $read{$blast_output}{$.}{'percentidentity'} = $percentidentity;  
 			
 			#make sure the start and end positions exist and are numbers
 			die ("ERROR - malformed line in blast output $blast_output at line $.\n") unless $startpos =~ /^\d+$/ && $endpos =~ /^\d+$/;
 
-			#foreach base i in the reference genome, increment its coverage count and %id count if needed
-			for ($i = $startpos; $i <= $endpos; ++$i) {
-				++$coverage{$blast_output}{$i};
-				++$coverageTotal;
-				$percentidentity{$blast_output}{$i} += $percentidentity if $plot_identity;
-			}
 		}
 
 		close BLAST;
-
-		my $coverageMean = $coverageTotal / $reference_genome_length;
-		print STDERR "\nMEAN COVERAGE FOR $blast_output: $coverageMean";
-	}
-
-	my $coverageMean = $coverageTotal / $reference_genome_length;
-	print STDERR "\nMEAN COVERAGE: $coverageMean";
-}
-
-sub do_moving_window_average {
-
-	#loop over multiple blast outputs
-	foreach $blast_output (@blast_output) {
-
-		print STDERR "\nComputing moving window average for $blast_output...";
-
-		for ($i = 1; $i <= $reference_genome_length; $i += $window_size) { 
-			undef $n;
-			undef $sum;
-			for ($j = 1; $j <= $window_size; ++$j) {
-				my $pos_to_count = $i - $j;
-				if ($plot_identity) {
-					next unless exists $coverage{$blast_output}{$pos_to_count};
-					my $pos_average = $percentidentity{$blast_output}{$pos_to_count} / $coverage{$blast_output}{$pos_to_count};
-					$sum += $pos_average;
-					++$n;
-				} else {
-					next unless exists $coverage{$blast_output}{$pos_to_count};
-					$sum += $coverage{$blast_output}{$pos_to_count};
-					++$n;
-				}
-			}
-			if ($n == 0) {
-				$window_average{$blast_output}{$i} = 0;
-				next;
-			}
-			$window_average{$blast_output}{$i} = $sum / $n;
-			$maxCoverage = $sum / $n unless $maxCoverage >= $sum / $n;
-		}
-
 	}
 }
 
@@ -174,13 +110,8 @@ sub draw_plot {
 		die ("ERROR - could not create temporary plotfile plotfile.tmp\n") unless open(PLOT, ">$j-plotfile.tmp");
 		print PLOT "\"pos\",\"value\"";
 
-		for ($i = 1; $i <= $reference_genome_length; $i += $window_size) { 
-			if ($logY && ! $window_average{$blast_output}{$i} == 0) {
-				my $log = log($window_average{$blast_output}{$i});
-				print PLOT "\n$i,$log";
-			} else {
-				print PLOT "\n$i,$window_average{$blast_output}{$i}";
-			}
+		for ($i = 1; $i <= $reference_genome_length; ++$i) { 
+      print PLOT "\n$i,$window_average{$blast_output}{$i}";
 		}
 
 		close PLOT;
@@ -195,80 +126,33 @@ sub draw_plot {
 library("maptools")
 EOF
 
-	#R: read in plotfiles for each blast output
-	$j = 0;
-	foreach $blast_output (@blast_output) {
-		$script .= <<EOF;
-coverage$j = read.csv("$j-plotfile.tmp", head=TRUE)
-EOF
-		++$j;
-	}
-
-	#R: initialise the pdf output
-  #if it's a scatterplot, force png format
-  unless ($scatterplot) {
-	  $script .= <<EOF;
-pdf("$output_prefix.pdf", width = $plot_width, height = $plot_height)
-EOF
-  } else {
-    $script .= <<EOF;
+	#R: initialise the png output
+  $script .= <<EOF;
 png("$output_prefix.png", width = $plot_width, height = $plot_height)
 EOF
-  }
 
-	#R: set up seperate par row for features if needed
-	#unless (!$features_file) { #unless no features file has been specified
-		#$script .= <<EOF;
-#par(mfrow = c(2,1))
-#EOF
-	#}
-	
 	#R: set plot title and initialise plot area
-	if ($plot_identity) {
-		$plot_title = "% ID";
-	} else {
-		if ($logY) {
-			$plot_title = "ln(Coverage)";
-		} else {
-			$plot_title = "Coverage";
-		}
-	}
-  my $ylim;
-  if ($plot_identity) {
-    $ylim = 100;
-  } else {
-	  $ylim = $maxCoverage * 1.4;
-  }
-	if ($logY) {
-		$ylim = log($ylim);
-	}
+  $plot_title = "% ID";
+  my $ylim = 100;
 	my $yAxis;
 	$script .= <<EOF;
 par(xpd=TRUE)
-plot(coverage0\$pos, coverage0\$value, type="n", ylab = c("$plot_title"), xlab = c(""), xlim=c(0, $reference_genome_length), ylim=c(0, $ylim)$yAxis)
+myx=c(1,2)
+myy=c(3,4)
+plot(myx, myy, type="n", ylab = c("$plot_title"), xlab = c(""), xlim=c(0, $reference_genome_length), ylim=c(0, $ylim)$yAxis)
 EOF
 
-	#R: draw a polygon representing coverage for each blast output, unless it's a scatterplot in which case draw a line for each read
+	#R: draw a line for each read
 	my @rcolours = qw(#104E8B70 #B2222270 #228B2270 #8B0A5070 #CDAD0070);
 	$j = 0;
-  unless ($scatterplot) {
-	  foreach $blast_output (@blast_output) {
-		  $script .= <<EOF;
-polygon_coords = rbind(coverage$j, c($reference_genome_length, 0), c(0,0))
-polygon(polygon_coords, col=c("@rcolours[$j]"), lty=0)
-EOF
-	  ++$j;
-	  }
-  } else {
-    foreach my $blast_output (@blast_output) {
-      my $k = 1;
-      foreach my $readid (keys (%{$read{$blast_output}})) {
-        $script .= <<EOF;
+  foreach my $blast_output (@blast_output) {
+    my $k = 1;
+    foreach my $readid (keys (%{$read{$blast_output}})) {
+      $script .= <<EOF;
 lines(c($read{$blast_output}{$readid}{'startpos'}, $read{$blast_output}{$readid}{'endpos'}), c($read{$blast_output}{$readid}{'percentidentity'}, $read{$blast_output}{$readid}{'percentidentity'}), col=c("@rcolours[$j]"))
 EOF
-      }
-    ++$j;
     }
+  ++$j;
   }
 #R: add a legend to the coverage plot my $legendText;
 	my $legendCols;
@@ -284,79 +168,13 @@ EOF
 legendtext = c($legendText)
 legendcols = c($legendCols)
 legend(c("topright"), legend=legendtext, fill=legendcols)
-EOF
-
-	#R: draw on the features
-	if (!$features_file) {
-		$script .= <<EOF;
 dev.off()
 EOF
-	} else {
-
-		#$script .= <<EOF;
-#plot(1, type="n", axes=F, xlim = c(0, $reference_genome_length), ylim = c(0, 10), ylab = "", xlab = "")
-#EOF
-
-		print STDERR "\nAdding features...";
-		die ("ERROR - could not open features in $features_file\n") unless open(FEATURES, "<$features_file");
-			our @xs;
-			our @ys;
-			our @labels;
-			while ($line = <FEATURES>) {
-				chomp $line;
-				my @fields = split(/,/, $line);
-				die ("ERROR - malformed features line on line $. of $features_file - all lines should have four fields - if you want to leave a field empty, you still have to put in commas to show it's there\n") unless @fields == 4;
-				print STDERR "\nAdding feature @fields[3]...";
-				&draw_feature(@fields);
-			}
-		close FEATURES;
-
-		my $xs = join(",", @xs);
-		my $ys = join(",", @ys);
-		my $labels = join(",", @labels);
-		$script .= <<EOF;
-pointLabel(c($xs), c($ys), pos=1, labels=c($labels), xpd=NA, allowSmallOverlap = FALSE)
-dev.off()
-EOF
-
-	}
-	print R $script;
-	close R;
 
 	#execute R script
+	print R $script;
+	close R;
 	print STDERR "\nExecuting R script...";
 	system("R --no-save < R.tmp");
 
-}
-
-sub draw_feature {
-
-	@fields = @_;
-
-	$start_pos = @fields[0];
-	$end_pos = @fields[1];
-	$gene_label = @fields[3];
-	
-	$text_pos = ($start_pos - $end_pos) * 0.5 + $end_pos;
-	if (@fields[2] eq "") {
-		$arrow_colour = "firebrick";
-	} else {
-		$arrow_colour = @fields[2];
-	}
-
-	push(@xs, $text_pos);
-	push(@ys, 0);
-	push(@labels, "\"$gene_label\"");
-
-	$script .= <<EOF;
-draw_me = rbind(
-c($end_pos,0.7),
-c($start_pos, 0.7),
-c($start_pos, 0.3),
-c($end_pos, 0.3),
-c($end_pos,0.7)
-)
-
-polygon(draw_me, col=c("$arrow_colour"), lty=1, xpd=NA)
-EOF
 }
