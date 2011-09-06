@@ -83,10 +83,10 @@ sub get_percent_identity {
     $read{$blast_output}{$line[0]}{'startpos'} = $startpos; 
     $read{$blast_output}{$line[0]}{'endpos'} = $endpos;  
     $read{$blast_output}{$line[0]}{'percentidentity'} = $percentidentity;  
+    $read{$blast_output}{$line[0]}{'colour'} = &colour_for($line[10]);
     
     #make sure the start and end positions exist and are numbers
     die ("ERROR - malformed line in blast output $blast_output at line $.\n") unless $startpos =~ /^\d+$/ && $endpos =~ /^\d+$/;
-
   }
 
   close BLAST;
@@ -119,14 +119,22 @@ plot(myx, myy, type="n", ylab = c("$plot_title"), xlab = c(""), xlim=c(0, $refer
 EOF
 
 	#R: draw a line for each read
-	my @rcolours = qw(#104E8B70 #B2222270 #228B2270 #8B0A5070 #CDAD0070);
 	$j = 0;
   my $k = 1;
   foreach my $readid (keys (%{$read{$blast_output}})) {
     $script .= <<EOF;
-lines(c($read{$blast_output}{$readid}{'startpos'}, $read{$blast_output}{$readid}{'endpos'}), c($read{$blast_output}{$readid}{'percentidentity'}, $read{$blast_output}{$readid}{'percentidentity'}), col=c("$rcolours[$j]"))
+lines(c($read{$blast_output}{$readid}{'startpos'}, $read{$blast_output}{$readid}{'endpos'}), c($read{$blast_output}{$readid}{'percentidentity'}, $read{$blast_output}{$readid}{'percentidentity'}), col=c("$read{$blast_output}{$readid}{'colour'}"))
 EOF
   }
+
+  #add a legend
+  my $legendCols = q/"cadetblue1", "dodgerblue4", "blue3", "darkslateblue", "darkorchid1", "firebrick1", "red"/;
+  my $legendText = q/"E-value >= 1", "E-value 0.1 - 1", "E-value 0.01 - 0.1", "E-value 0.001 - 0.01", "E-value 0.0001 - 0.001", "E-value 0.00001 - 0.0001", "E-value < 0.00001"/;
+  $script .= <<EOF;
+legendtext = c($legendText)
+legendcols = c($legendCols)
+legend(c("topright"), legend=legendtext, fill=legendcols)
+EOF
 
   #close device
   $script .= <<EOF;
@@ -139,4 +147,18 @@ EOF
 	print STDERR "\nExecuting R script...";
 	system("R --no-save < R.tmp");
 
+}
+
+#return the R colour for a particular evalue
+sub colour_for {
+
+  my $eval = $_[0];
+  
+  return "cadetblue1" if $eval >= 1;
+  return "dodgerblue4" if $eval < 1 && $eval >= 0.1;
+  return "blue3" if $eval < 0.1 && $eval >= 0.01;
+  return "darkslateblue" if $eval < 0.01 && $eval >= 0.001;
+  return "darkorchid" if $eval < 0.001 && $eval >= 0.0001;
+  return "firebrick1" if $eval < 0.0001 && $eval >= 0.00001;
+  return "red" if $_[0] < 0.00001;
 }
