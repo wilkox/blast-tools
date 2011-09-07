@@ -47,6 +47,7 @@ my @Rcolours = qw(cadetblue1 dodgerblue4 blue3 darkslateblue darkorchid firebric
 
 ##BODY
 my $maxID = 0;
+my @sortedEvalues;
 &get_length_of_reference_genome;
 &get_percent_identity;
 &colourise_reads if @evalues > 0;
@@ -103,7 +104,7 @@ sub get_percent_identity {
 }
 
 sub draw_plot {
-	
+
 	#generate R script
 	print STDERR "\nWriting R script to R.tmp...";
 	die ("ERROR - cannot create R script at R.tmp\n") unless open(R, ">R.tmp");
@@ -137,14 +138,8 @@ lines(c($read{$readid}{'startpos'}, $read{$readid}{'endpos'}), c($read{$readid}{
 EOF
   }
 
-  #add a legend
-  my $legendCols = q/"cadetblue1", "dodgerblue4", "blue3", "darkslateblue", "darkorchid1", "firebrick1", "red"/;
-  my $legendText = q/"E-value >= 1", "E-value 0.1 - 1", "E-value 0.01 - 0.1", "E-value 0.001 - 0.01", "E-value 0.0001 - 0.001", "E-value 0.00001 - 0.0001", "E-value < 0.00001"/;
-  $script .= <<EOF;
-legendtext = c($legendText)
-legendcols = c($legendCols)
-legend(c("topright"), legend=legendtext, fill=legendcols)
-EOF
+  #add a legend if reads are colourised by E-value
+  &add_evalue_legend if @evalues > 0;
 
   #close device
   $script .= <<EOF;
@@ -163,14 +158,36 @@ EOF
 sub colourise_reads {
 
   #sort the evalues
-  my @sorted = sort(@evalues);
+  @sortedEvalues = sort(@evalues);
   
   #for each evalue, colour all reads below that value
   my $colourIndex = 1;
-  foreach my $evalue (@sorted) {
+  foreach my $evalue (@sortedEvalues) {
     foreach my $readid (keys(%read)) {
       $read{$readid}{'colour'} = @Rcolours[$colourIndex] if $read{$readid}{'evalue'} < $evalue;
     }
     ++$colourIndex;
   }
+}
+
+#add a legend for e-value thresholds
+sub add_evalue_legend {
+
+  my $legendCols = "\"@Rcolours[0]\"";
+  my $legendText = "\"E-value >= @sortedEvalues[0]\"";
+
+  my $i = 0;
+  foreach my $evalue (@sortedEvalues) {
+    next if $evalue eq @sortedEvalues[0];
+    ++$i;
+    $legendCols .= ", \"@Rcolours[$i]\"";
+    my $j = $i - 1;
+    $legendText .= ", \"@sortedEvalues[$j] > E-value >= $evalue\"";
+  }
+
+  $script .= <<EOF;
+legendtext = c($legendText)
+legendcols = c($legendCols)
+legend(c("topright"), legend=legendtext, fill=legendcols)
+EOF
 }
