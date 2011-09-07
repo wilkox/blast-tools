@@ -118,6 +118,14 @@ EOF
 png("$output_prefix.png", width = $plot_width, height = $plot_height)
 EOF
 
+  #R: add a second plot cell to put the 
+  #legend in, if there is one
+  if (@evalues) {
+    $script .= <<EOF;
+layout(matrix(c(1,2), nrow = 1), widths = c(0.7, 0.3))
+EOF
+  }
+
 	#R: set plot title and initialise plot area
   $plot_title = "% ID";
   my $ylim = 100;
@@ -138,10 +146,10 @@ lines(c($read{$readid}{'startpos'}, $read{$readid}{'endpos'}), c($read{$readid}{
 EOF
   }
 
-  #add a legend if reads are colourised by E-value
+  #R: add a legend if reads are colourised by E-value
   &add_evalue_legend if @evalues > 0;
 
-  #close device
+  #R: close device
   $script .= <<EOF;
 dev.off()
 EOF
@@ -186,6 +194,8 @@ sub add_evalue_legend {
   }
 
   $script .= <<EOF;
+par(mar = c(5, 0, 4, 2) + 0.1)
+plot(1:3, rnorm(3), pch = 1, lty = 1, ylim=c(-2,2), type = "n", axes = FALSE, ann = FALSE)
 legendtext = c($legendText)
 legendcols = c($legendCols)
 legend(c("topright"), legend=legendtext, fill=legendcols)
