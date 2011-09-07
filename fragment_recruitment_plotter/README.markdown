@@ -1,5 +1,11 @@
 #About
-Visualise BLAST fragment recruitment to a reference genome. Can overlay up to five queries onto a single plot. Also supports basic mapping of features e.g. genes onto the reference genome.
+Visualise BLAST fragment recruitment to a reference genome. 
+
+#Coverage plotter
+Plots the read depth across the reference genome, either base-by-base or with a moving window average. Can overlay up to five queries onto a single plot. Also supports basic mapping of features e.g. genes onto the reference genome. Can produce log-scale plot.
+
+#Percent identity plotter
+Plots each HIT (not READ) on the reference genome, so make sure you pre-filter your blast output to exactly what you want to plot! Reads can be optionally be coloured by evalue, as with [CAMERA's](http://camera.calit2.net/) fragment recruitment tool.
 
 #Requirements
 Requires `perl` and `R`. Written for a linux or other unix-like environment.
