@@ -43,7 +43,7 @@ die $USAGE if !$reference_genome or !$blast_output or !$output_prefix or !$plot_
 die $USAGE if @evalues > 6;
 
 #set palette for point colouring
-my @Rcolours = qw(darkblue cyan chartreuse4 gold darkorange firebrick1 magenta1);
+my @Rcolours = qw(darkblue cyan chartreuse4 gold firebrick1 magenta1 bisque4);
 
 ##BODY
 my $maxID = 0;
@@ -115,7 +115,7 @@ EOF
 
 	#R: initialise the png output
   $script .= <<EOF;
-png("$output_prefix.png", width = $plot_width, height = $plot_height)
+png("$output_prefix.png", width = $plot_width, height = $plot_height, res=200)
 EOF
 
   #R: add a second plot cell to put the 
