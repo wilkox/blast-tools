@@ -43,7 +43,7 @@ die $USAGE if !$reference_genome or !$blast_output or !$output_prefix or !$plot_
 die $USAGE if @evalues > 6;
 
 #set palette for point colouring
-my @Rcolours = qw(cadetblue1 dodgerblue4 blue3 darkslateblue darkorchid firebrick1 red);
+my @Rcolours = qw(darkblue cyan chartreuse4 gold darkorange firebrick1 magenta1);
 
 ##BODY
 my $maxID = 0;
@@ -192,6 +192,10 @@ sub add_evalue_legend {
     my $j = $i - 1;
     $legendText .= ", \"@sortedEvalues[$j] > E-value >= $evalue\"";
   }
+  ++$i;
+  my $j = $i - 1;
+  $legendCols .= ", \"@Rcolours[$i]\"";
+  $legendText .= ", \"@sortedEvalues[$j] > E-value\"";
 
   $script .= <<EOF;
 par(mar = c(5, 0, 4, 2) + 0.1)
