@@ -24,6 +24,9 @@ plot_percent_identity.pl
         -p <string> Prefix for output files.
         -i <number> Plot width, in pixels
         -h <number> Plot height, in pixels
+
+OPTIONAL:
+        -e <E-value> To colour reads by E-value, specify up to 6 evalue thresholds with -e. For example, if you run plot_percent_identity.pl with "-e 1 -e 1e-3", reads will be binned into three differently coloured groups: E-value >= 1; 1 > E-value >= 1e-3; 1e-3 > E-value.
 /;
 
 #get and check options
@@ -34,13 +37,19 @@ GetOptions (
 'p=s' => \$output_prefix,
 'i=s' => \$plot_width,
 'h=s' => \$plot_height,
+'e=s' => \@evalues,
 ) or die $USAGE;
 die $USAGE if !$reference_genome or !$blast_output or !$output_prefix or !$plot_height or !$plot_width;
+die $USAGE if @evalues > 6;
+
+#set palette for point colouring
+my @Rcolours = qw(cadetblue1 dodgerblue4 blue3 darkslateblue darkorchid firebrick1 red);
 
 ##BODY
 my $maxID = 0;
 &get_length_of_reference_genome;
 &get_percent_identity;
+&colourise_reads if @evalues > 0;
 &draw_plot;
 exit;
 ##END BODY
@@ -80,10 +89,11 @@ sub get_percent_identity {
     my $endpos = $sorted[1];
     my $percentidentity = $line[2];
     $maxID = $maxID > $percentidentity ? $percentidentity : $maxID;
-    $read{$blast_output}{$line[0]}{'startpos'} = $startpos; 
-    $read{$blast_output}{$line[0]}{'endpos'} = $endpos;  
-    $read{$blast_output}{$line[0]}{'percentidentity'} = $percentidentity;  
-    $read{$blast_output}{$line[0]}{'colour'} = &colour_for($line[10]);
+    $read{$line[0]}{'startpos'} = $startpos; 
+    $read{$line[0]}{'endpos'} = $endpos;  
+    $read{$line[0]}{'percentidentity'} = $percentidentity;  
+    $read{$line[0]}{'evalue'} = @line[10];
+    $read{$line[0]}{'colour'} = @Rcolours[0];
     
     #make sure the start and end positions exist and are numbers
     die ("ERROR - malformed line in blast output $blast_output at line $.\n") unless $startpos =~ /^\d+$/ && $endpos =~ /^\d+$/;
@@ -121,9 +131,9 @@ EOF
 	#R: draw a line for each read
 	$j = 0;
   my $k = 1;
-  foreach my $readid (keys (%{$read{$blast_output}})) {
+  foreach my $readid (keys (%read)) {
     $script .= <<EOF;
-lines(c($read{$blast_output}{$readid}{'startpos'}, $read{$blast_output}{$readid}{'endpos'}), c($read{$blast_output}{$readid}{'percentidentity'}, $read{$blast_output}{$readid}{'percentidentity'}), col=c("$read{$blast_output}{$readid}{'colour'}"))
+lines(c($read{$readid}{'startpos'}, $read{$readid}{'endpos'}), c($read{$readid}{'percentidentity'}, $read{$readid}{'percentidentity'}), col=c("$read{$readid}{'colour'}"))
 EOF
   }
 
@@ -149,16 +159,18 @@ EOF
 
 }
 
-#return the R colour for a particular evalue
-sub colour_for {
+#colourise the reads if an evalue threshold has been set
+sub colourise_reads {
 
-  my $eval = $_[0];
+  #sort the evalues
+  my @sorted = sort(@evalues);
   
-  return "cadetblue1" if $eval >= 1;
-  return "dodgerblue4" if $eval < 1 && $eval >= 0.1;
-  return "blue3" if $eval < 0.1 && $eval >= 0.01;
-  return "darkslateblue" if $eval < 0.01 && $eval >= 0.001;
-  return "darkorchid" if $eval < 0.001 && $eval >= 0.0001;
-  return "firebrick1" if $eval < 0.0001 && $eval >= 0.00001;
-  return "red" if $_[0] < 0.00001;
+  #for each evalue, colour all reads below that value
+  my $colourIndex = 1;
+  foreach my $evalue (@sorted) {
+    foreach my $readid (keys(%read)) {
+      $read{$readid}{'colour'} = @Rcolours[$colourIndex] if $read{$readid}{'evalue'} < $evalue;
+    }
+    ++$colourIndex;
+  }
 }
