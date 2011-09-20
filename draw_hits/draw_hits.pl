@@ -22,10 +22,9 @@ while (my $line = <STDIN>) {
 foreach my $query (keys(%feature)) {
   print STDERR "\nDrawing query $query...";
   my $panel = Bio::Graphics::Panel->new(
-    -length    => $max{$query} - $min{$query} + 10
-    -width     => 800,
-    -pad_left  => 10,
-    -pad_right => 10,
+    -length    => $max{$query} - $min{$query},
+    -pad_left  => 100,
+    -pad_right => 100
   );
 
   my $full_length = Bio::SeqFeature::Generic->new(
