@@ -14,7 +14,6 @@
 # granted to copy, modify, adapt, sell and distribute this software
 # in any way you choose.
 
-use warnings;
 use Getopt::Long;
 use Time::Local;
 
