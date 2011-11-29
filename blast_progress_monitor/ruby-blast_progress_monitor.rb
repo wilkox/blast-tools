@@ -47,10 +47,10 @@ optparse = OptionParser.new do |opts|
   opts.on( '-s FILE', '--shell-script FILE' ) do |file|
     job = Job.new
     contents = File.open(file).read
-    abort("Shell script #{shell_script} does not specify an input with -i") unless contents =~ /-i\s(\S+)/
-    job.input = Multifasta.new(File.absolute_path($1, File.dirname(file))
-    abort("Shell script #{shell_script} does not specify an output with -o") unless contents =~ /-o\s(\S+)/
-    job.output = BlastOutput.new(File.absolute_path($1, File.dirname(file))
+    abort("Shell script #{file} does not specify an input with -i") unless contents =~ /-i\s(\S+)/
+    job.input = Multifasta.new(File.absolute_path($1, File.dirname(file)))
+    abort("Shell script #{file} does not specify an output with -o") unless contents =~ /-o\s(\S+)/
+    job.output = BlastOutput.new(File.absolute_path($1, File.dirname(file)))
     jobs << job
   end
 end
