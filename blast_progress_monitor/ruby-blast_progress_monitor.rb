@@ -36,13 +36,12 @@ jobs = []
 optparse = OptionParser.new do |opts|
 
   opts.on( '-i FILE', '--sample-file FILE', '--input FILE', '--sample FILE' ) do |file|
-    @job = Job.new
-    @job.input = Multifasta.new(file)
-  end
-
-  opts.on( '-o FILE', '--blast-output FILE', '--output FILE' ) do |file|
-    @job.output = BlastOutput.new(file)
-    jobs << @job
+    job = Job.new
+    job.input = Multifasta.new(file)
+    opts.on( '-o FILE', '--blast-output FILE', '--output FILE' ) do |file|
+      job.output = BlastOutput.new(file)
+      jobs << job
+    end
   end
 
   opts.on( '-s FILE', '--shell-script FILE' ) do |file|
