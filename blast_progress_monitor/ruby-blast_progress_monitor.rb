@@ -5,21 +5,23 @@ require 'optparse'
 class Job
   attr_accessor :input, :output
 
+  def lasthit_index
+    `grep ">" #{File.absolute_path(self.input)} | grep -n #{self.output.lasthit}` =~ /^(\d+)/
+    $1
+  end
+
   def progress
     print "CALCULATING PROGRESS..."
-    ireads = self.input.reads
-    puts "\rPROGRESS:      #{ireads.index(self.output.lasthit).to_f / ireads.length.to_f * 100}%"
+    puts "\rPROGRESS:      #{ self.lasthit_index.to_f / self.input.read_count.to_f * 100}%"
+    exit
   end
 end
 
 class Multifasta < File
 
-  def reads
-    names = []
-    self.readlines.each do |line|
-      names << line.scan(/^>(\S+)/).flatten
-    end 
-    names.reject! { |c| c.empty? }.flatten
+  def read_count
+    `grep ">" #{File.absolute_path(self)} | wc -l` =~ /^(\d+)/
+    $1
   end
 end
 
