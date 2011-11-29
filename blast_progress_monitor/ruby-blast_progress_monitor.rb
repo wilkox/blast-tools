@@ -8,7 +8,7 @@ class Job
   def progress
     print "CALCULATING PROGRESS..."
     ireads = self.input.reads
-    puts "\rPROGRESS:      #{ireads.index(self.output.lasthit).to_f / ireads.length.to_f * 100}"
+    puts "\rPROGRESS:      #{ireads.index(self.output.lasthit).to_f / ireads.length.to_f * 100}%"
   end
 end
 
