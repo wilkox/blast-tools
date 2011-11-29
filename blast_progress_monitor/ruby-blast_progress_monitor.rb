@@ -11,9 +11,11 @@ class Job
   end
 
   def progress
-    print "CALCULATING PROGRESS..."
-    puts "\rPROGRESS:      #{self.lasthit_index.to_f / self.input.read_count.to_f * 100}%"
-    exit
+    self.lasthit_index.to_f / self.input.read_count.to_f * 100
+  end
+
+  def hitrate
+    self.output.uniq_hitcount.to_f / self.input.read_count.to_f * 100 
   end
 end
 
@@ -26,6 +28,11 @@ class Multifasta < File
 end
 
 class BlastOutput < File
+
+  def uniq_hitcount
+    `cut -f1 #{self.path} | uniq | wc -l` =~ /(\d+)/
+    $1
+  end
   
   def lasthit
     `tail -1 #{self.path}`.scan(/^(\S+)/).flatten.first.to_s
@@ -71,6 +78,8 @@ jobs.each do |job|
   puts "INPUT:         #{job.input.path} [#{job.input.read_count} reads]"
   puts "OUTPUT:        #{job.output.path} [#{job.output.hit_count} hits]"
   puts ""
-  job.progress
+  puts "PROGRESS:      #{job.progress}%"
+  puts ""
+  puts "HIT RATE:      #{job.hitrate}%"
   puts "==========="
 end
