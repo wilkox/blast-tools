@@ -44,7 +44,10 @@ class BlastOutput < File
   end
 end
 
-#parse command line options
+####
+##MAIN
+####
+
 jobs = []
 optparse = OptionParser.new do |opts|
 
@@ -68,11 +71,8 @@ optparse = OptionParser.new do |opts|
   end
 end
 
-####
-##MAIN
-####
-
 optparse.parse!
+
 jobs.each do |job|
   puts "==========="
   puts "INPUT:         #{job.input.path} [#{job.input.read_count} reads]"
