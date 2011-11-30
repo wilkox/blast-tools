@@ -15,7 +15,7 @@ class Job
   end
 
   def hitrate
-    self.output.uniq_hitcount.to_f / self.input.read_count.to_f * 100 
+    self.output.uniq_hitcount.to_f / self.lasthit_index.to_f * 100 
   end
 end
 
