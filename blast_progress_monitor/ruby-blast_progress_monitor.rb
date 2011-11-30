@@ -19,6 +19,21 @@ class Job
   end
 end
 
+class Shellscript < File
+
+  def input
+    contents = File.open(self).read
+    abort("Shell script #{self} does not specify an input with -i") unless contents =~ /-i\s(\S+)/
+    Multifasta.new(File.absolute_path($1, File.dirname(self)))
+  end
+
+  def output
+    contents = File.open(self).read
+    abort("Shell script #{self} does not specify an output with -o") unless contents =~ /-o\s(\S+)/
+    BlastOutput.new(File.absolute_path($1, File.dirname(self)))
+  end
+end
+
 class Multifasta < File
 
   def read_count
@@ -62,11 +77,9 @@ optparse = OptionParser.new do |opts|
 
   opts.on( '-s FILE', '--shell-script FILE' ) do |file|
     job = Job.new
-    contents = File.open(file).read
-    abort("Shell script #{file} does not specify an input with -i") unless contents =~ /-i\s(\S+)/
-    job.input = Multifasta.new(File.absolute_path($1, File.dirname(file)))
-    abort("Shell script #{file} does not specify an output with -o") unless contents =~ /-o\s(\S+)/
-    job.output = BlastOutput.new(File.absolute_path($1, File.dirname(file)))
+    shellscript = Shellscript.new(file)
+    job.input = shellscript.input
+    job.output = shellscript.output
     jobs << job
   end
 end
