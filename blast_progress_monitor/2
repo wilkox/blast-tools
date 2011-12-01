@@ -35,18 +35,13 @@ class Shellscript < File
   end
 
   def starttime
-    if `qstat -r`.include?(File.basename(self))
-      starttime = DateTime.new
-      `qstat -r`.each_line do |line|
-        if line =~ /^(\d+)/
-          starttime = DateTime.strptime("#{line.split(/\s+/)[5]} #{line.split(/\s+/)[6]}", "%m/%d/%Y %H:%M:%S")
-        end
-        if line =~ /#{File.basename(self)}/
-          return starttime
-        end
+    `qstat -r`.each_line do |line|
+      if line =~ /^(\d+)/
+        #starttime = DateTime.strptime("#{line.split(/\s+/)[5]} #{line.split(/\s+/)[6]}", "%m/%d/%Y %H:%M:%S")
       end
-    else
-      return false
+      #if line =~ /#{self}/
+        #return starttime
+      #end
     end
   end
 end
@@ -97,9 +92,7 @@ optparse = OptionParser.new do |opts|
     shellscript = Shellscript.new(file)
     job.input = shellscript.input
     job.output = shellscript.output
-    if shellscript.starttime
-      job.starttime = shellscript.starttime
-    end
+    puts "START TIME IS #{shellscript.starttime}"
     jobs << job
   end
 end
