@@ -2,13 +2,14 @@
 
 require 'optparse'
 require 'date'
+require 'time'
 
 class Job
-  attr_accessor :input, :output
+  attr_accessor :input, :output, :starttime
 
   def lasthit_index
     `grep ">" #{File.absolute_path(self.input)} | grep -n #{self.output.lasthit}` =~ /^(\d+)/
-    $1
+    $1.to_i
   end
 
   def progress
@@ -17,6 +18,14 @@ class Job
 
   def hitrate
     self.output.uniq_hitcount.to_f / self.lasthit_index.to_f * 100 
+  end
+
+  def due
+    if self.starttime
+      return Time.at((((Time.now.to_i - self.starttime) * self.input.read_count) / self.lasthit_index) + Time.now.to_i)
+    else
+      return "Could not be estimated" 
+    end
   end
 end
 
@@ -36,13 +45,13 @@ class Shellscript < File
 
   def starttime
     if `qstat -r`.include?(File.basename(self))
-      starttime = DateTime.new
+      starttime = Time.new
       `qstat -r`.each_line do |line|
         if line =~ /^(\d+)/
-          starttime = DateTime.strptime("#{line.split(/\s+/)[5]} #{line.split(/\s+/)[6]}", "%m/%d/%Y %H:%M:%S")
+          starttime = DateTime.strptime("#{line.split(/\s+/)[5]} #{line.split(/\s+/)[6]}", "%m/%d/%Y %H:%M:%S").to_time
         end
         if line =~ /#{File.basename(self)}/
-          return starttime
+          return starttime.to_i
         end
       end
     else
@@ -55,7 +64,7 @@ class Multifasta < File
 
   def read_count
     `grep ">" #{File.absolute_path(self)} | wc -l` =~ /^(\d+)/
-    $1
+    $1.to_i
   end
 end
 
@@ -114,5 +123,7 @@ jobs.each do |job|
   puts "PROGRESS:      #{job.progress}%"
   puts ""
   puts "HIT RATE:      #{job.hitrate}%"
+  puts ""
+  puts "DUE:           #{job.due}"
   puts "==========="
 end
