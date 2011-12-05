@@ -22,7 +22,7 @@ class Job
 
   def due
     if self.starttime
-      return Time.at((((Time.now.to_i - self.starttime) * self.input.read_count) / self.lasthit_index) + Time.now.to_i)
+      return Time.at((((Time.now.to_i - self.starttime) * self.input.read_count) / self.lasthit_index) + self.starttime)
     else
       return "Could not be estimated" 
     end
