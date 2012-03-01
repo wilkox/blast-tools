@@ -97,7 +97,7 @@ sub make_the_output {
 	my $lasthit = "";
 
 	print "====\n"; #begin output
-	print "SHELL SCRIPT RUNNING ON SGE:\t$shellscript\n" unless !$shellscript;
+	print "SHELL SCRIPT RUNNING ON SGE:\t\t$shellscript\n" unless !$shellscript;
 	&dostats; #basic stats on progress
 	&printstats; #print results
 	&getstarttime if defined $jobid; #get the start time if a job id is available
@@ -237,8 +237,6 @@ sub dostats{
 	#detect if output is in xml format
 	$head = `head -1 $blastoutputfile`;
 	my $is_xml if $head =~ /^<\?xml/;
-	print STDERR "DETECTED XML OUTPUT FORMAT\n" if $is_xml;
-	print STDERR "DETECTED TABULAR OUTPUT FORMAT\n" unless $is_xml;
 
 	#make hash of hits
 	die ("ERROR: could not open blast output file $blastoutputfile\n") unless open(BLASTOUTPUT, "<$blastoutputfile");
@@ -320,19 +318,19 @@ sub dostats{
 sub printstats {
 
 	print<<EOF
-BLAST QUERY FILE:\t$blastqueryfile
-BLAST OUTPUT FILE:\t$blastoutputfile
+BLAST QUERY FILE:\t\t\t$blastqueryfile
+BLAST OUTPUT FILE:\t\t\t$blastoutputfile
 
-TOTAL QUERY SEQUENCES:\t$querycount
-TOTAL SEQUENCES WITH HITS:\t$hitcount
-TOTAL HITS:\t$totalhits
+TOTAL QUERY SEQUENCES:\t\t\t$querycount
+TOTAL SEQUENCES WITH HITS:\t\t$hitcount
+TOTAL HITS:\t\t\t\t$totalhits
 
 NUMBER OF QUERY SEQUENCES PROCESSED:\t$progresscount
 PERCENT PROCESSED QUERIES WITH HITS:\t$percentrelative%
-AVG HITS PER PROCESSED QUERY:\t$avghitsperquery
-PROGRESS:\t$percentprogress%
+AVG HITS PER PROCESSED QUERY:\t\t$avghitsperquery
+PROGRESS:\t\t\t\t$percentprogress%
 
-LAST QUERY WITH FULL HIT:\t$lasthit
+LAST QUERY WITH FULL HIT:\t\t$lasthit
 EOF
 ;
 	} #end of printstats sub
@@ -389,10 +387,10 @@ sub printendtime {
 
 	print <<EOF
 
-JOB ID:\t$jobid
-JOB START TIME:\t$jobtimenice
-CURRENT SYSTEM TIME:\t$currenttimenice
-ESTIMATED COMPLETION TIME:\t$completiontimenice
+JOB ID:\t\t\t\t\t$jobid
+JOB START TIME:\t\t\t\t$jobtimenice
+CURRENT SYSTEM TIME:\t\t\t$currenttimenice
+ESTIMATED COMPLETION TIME:\t\t$completiontimenice
 EOF
 ;
 } #end of printendtime sub

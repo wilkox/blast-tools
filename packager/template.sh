@@ -4,7 +4,7 @@
 #PBS -q workq
 #PBS -l walltime=100:00:00
 
-export PBS_O_WORKDIR=/home/dxw561/kegg_08s-working
+export PBS_O_WORKDIR=/home/dxw561/08-refseq-remainders-working
 cd ${PBS_O_WORKDIR}
 
 module load blast
