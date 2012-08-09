@@ -17,3 +17,6 @@ Attribution to the author would be appreciated but is not required.
 
 #Author
 This tool was written by David Wilkins: david@wilkox.org
+
+#Publications
+Brown, M. V., Lauro, F. M., DeMaere, M. Z., Muir, L., Wilkins, D., Thomas, T., Riddle, M. J., et al. (2012). Global biogeography of SAR11 marine bacteria. Molecular Systems Biology, 8(595), 1–13. doi:10.1038/msb.2012.28
