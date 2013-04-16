@@ -7,6 +7,10 @@ Plots the read depth across the reference genome, either base-by-base or with a 
 #Percent identity plotter
 Plots each HIT (not READ) on the reference genome, so make sure you pre-filter your blast output to exactly what you want to plot! Reads can be optionally be coloured by evalue, as with [CAMERA's](http://camera.calit2.net/) fragment recruitment tool.
 
+#Possible future improvements
+- Rewrite as a native R script or package
+- Support circular genomes
+
 #Requirements
 Requires `perl` and `R`. Written for a linux or other unix-like environment.
 
