@@ -1,3 +1,5 @@
+**This repository is archived and no longer maintained. It is kept as a record of the work.**
+
 #About
 
 `blast-tools` is a collection of small bioinformatic utilities. For full details on each tool, see the README in the tool subdir.
